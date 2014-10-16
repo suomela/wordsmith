@@ -1,4 +1,4 @@
-Wordsmith tools
+WordSmith tools
 ===============
 
 Put keywords in a separate column.
@@ -7,7 +7,7 @@ Put keywords in a separate column.
 Example
 -------
 
-Wordsmith output (with *** as search word marker):
+WordSmith output (with *** as search word marker):
 
     N | Concordance              |
     1 | ...foo foo***bar baz...  |
@@ -29,5 +29,5 @@ Usage
 
 Here:
 
-- input.txt = export from Wordsmith
+- input.txt = export from WordSmith
 - output.csv = something you can open in Excel
