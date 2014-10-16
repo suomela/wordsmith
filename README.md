@@ -29,5 +29,5 @@ Usage
 
 Here:
 
-- input.txt = export from WordSmith
+- input.txt = export from WordSmith (as text)
 - output.csv = something you can open in Excel
