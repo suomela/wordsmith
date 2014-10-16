@@ -1,5 +1,5 @@
-WordSmith tools
-===============
+WordSmith utilities
+===================
 
 Put keywords in a separate column.
 
