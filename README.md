@@ -7,7 +7,7 @@ Put keywords in a separate column.
 Example
 -------
 
-Wordsmith output:
+Wordsmith output (with *** as search word marker):
 
     N | Concordance              |
     1 | ...foo foo***bar baz...  |
