@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+
+import csv
+import io
+import string
+import sys
+
+
+# Which column to read
+COLUMN = "Concordance"
+MARKER = "***"
+
+# Which characters are considered to be part of a word
+WORDCHAR = set(string.ascii_letters + string.digits + "-'")
+
+
+def parse_tsv(s):
+    # Wordsmith seems to use non-breaking spaces as thousand separators.
+    # We will remove all of them.
+    return s.replace(u"\u00A0", "").rstrip("\n").split("\t")
+
+
+def find_rword(conc):
+    marker = conc.index(MARKER)
+    marker2 = conc.rindex(MARKER)
+    assert marker == marker2
+    tail = marker + len(MARKER)
+    text = conc[:marker] + conc[tail:]
+    x = marker
+    y = marker
+    while x > 1 and text[x-1] in WORDCHAR:
+        x -= 1
+    while y < len(text) - 1 and text[y] in WORDCHAR:
+        y += 1
+    return text[:x], text[x:y], text[y:]
+
+
+def cleanup_word(rword):
+    return rword.lower()
+
+
+def process(f, fout):
+    fo = csv.writer(fout, dialect="excel")
+
+    # Row 1
+    l = parse_tsv(f.readline())
+    assert len(l) == 1
+    assert l[0].startswith("WordSmith Tools ")
+
+    # Row 2
+    l = parse_tsv(f.readline())
+    assert len(l) == 1
+    assert l[0] == ""
+
+    # Row 3
+    header = parse_tsv(f.readline())
+    conci = header.index(COLUMN)
+
+    def new_row(orow, nconc):
+        nrow = []
+        for i, v in enumerate(orow):
+            if i == conci:
+                nrow.extend(nconc)
+            else:
+                nrow.append(v)
+        return nrow
+
+    nheader = new_row(
+        header,
+        ["Before", "Word", "After", "Simple"],
+    )
+    fo.writerow(nheader)
+
+    # Row 4...
+    while True:
+        l = f.readline()
+        if l == '':
+            break
+        row = parse_tsv(l)
+        assert len(header) == len(row)
+        conc = row[conci]
+        pre, rword, post = find_rword(conc)
+        word = cleanup_word(rword)
+        nrow = new_row(row, [pre, rword, post, word])
+        fo.writerow(nrow)
+
+
+def main():
+    # Where to read
+    f = io.TextIOWrapper(sys.stdin.buffer, encoding='iso-8859-1')
+    # Where to write
+    fout = sys.stdout
+    process(f, fout)
+
+
+main()
