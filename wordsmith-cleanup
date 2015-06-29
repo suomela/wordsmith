@@ -13,77 +13,86 @@ COLUMN = "Concordance"
 WORDCHAR = set(string.ascii_letters + string.digits + "-'")
 
 
-def parse_tsv(s):
-    # Wordsmith seems to use non-breaking spaces as thousand separators.
-    # We will remove all of them.
-    return s.replace(u"\u00A0", "").rstrip("\n").split("\t")
+class Convert:
+    def __init__(self, marker):
+        self.marker = marker
+
+    def parse_tsv(self, s):
+        # Wordsmith seems to use non-breaking spaces as thousand separators.
+        # We will remove all of them.
+        return s.replace(u"\u00A0", "").rstrip("\n").split("\t")
+
+    def find_rword(self, conc):
+        m = conc.index(self.marker)
+        m2 = conc.rindex(self.marker)
+        assert m == m2
+        tail = m + len(self.marker)
+        text = conc[:m] + conc[tail:]
+        x = m
+        y = m
+        while x > 1 and text[x-1] in WORDCHAR:
+            x -= 1
+        while y < len(text) - 1 and text[y] in WORDCHAR:
+            y += 1
+        return text[:x], text[x:y], text[y:]
+
+    def cleanup_word(self, rword):
+        return rword.lower()
+
+    def process(self, f, worksheet):
+        # Row 1
+        l = self.parse_tsv(f.readline())
+        assert len(l) == 1
+        assert l[0].startswith("WordSmith Tools ")
+
+        # Row 2
+        l = self.parse_tsv(f.readline())
+        assert len(l) == 1
+        assert l[0] == ""
+
+        # Row 3
+        header = self.parse_tsv(f.readline())
+        conci = header.index(COLUMN)
+
+        def new_row(orow, nconc):
+            nrow = []
+            for i, v in enumerate(orow):
+                if i == conci:
+                    nrow.extend(nconc)
+                else:
+                    nrow.append(v)
+            return nrow
+
+        nheader = new_row(
+            header,
+            ["Before", "Word", "After", "Simple"],
+        )
+        for c, elem in enumerate(nheader):
+            worksheet.write(0, c, elem)
+
+        # Row 4...
+        r = 1
+        while True:
+            l = f.readline()
+            if l == '':
+                break
+            row = self.parse_tsv(l)
+            assert len(header) == len(row)
+            conc = row[conci]
+            pre, rword, post = self.find_rword(conc)
+            word = self.cleanup_word(rword)
+            nrow = new_row(row, [pre, rword, post, word])
+            for c, elem in enumerate(nrow):
+                worksheet.write_string(r, c, elem)
+            r += 1
 
 
-def find_rword(marker, conc):
-    m = conc.index(marker)
-    m2 = conc.rindex(marker)
-    assert m == m2
-    tail = m + len(marker)
-    text = conc[:m] + conc[tail:]
-    x = m
-    y = m
-    while x > 1 and text[x-1] in WORDCHAR:
-        x -= 1
-    while y < len(text) - 1 and text[y] in WORDCHAR:
-        y += 1
-    return text[:x], text[x:y], text[y:]
-
-
-def cleanup_word(rword):
-    return rword.lower()
-
-
-def process(marker, f, worksheet):
-    # Row 1
-    l = parse_tsv(f.readline())
-    assert len(l) == 1
-    assert l[0].startswith("WordSmith Tools ")
-
-    # Row 2
-    l = parse_tsv(f.readline())
-    assert len(l) == 1
-    assert l[0] == ""
-
-    # Row 3
-    header = parse_tsv(f.readline())
-    conci = header.index(COLUMN)
-
-    def new_row(orow, nconc):
-        nrow = []
-        for i, v in enumerate(orow):
-            if i == conci:
-                nrow.extend(nconc)
-            else:
-                nrow.append(v)
-        return nrow
-
-    nheader = new_row(
-        header,
-        ["Before", "Word", "After", "Simple"],
-    )
-    for c, elem in enumerate(nheader):
-        worksheet.write(0, c, elem)
-
-    # Row 4...
-    r = 1
-    while True:
-        l = f.readline()
-        if l == '':
-            break
-        row = parse_tsv(l)
-        assert len(header) == len(row)
-        conc = row[conci]
-        pre, rword, post = find_rword(marker, conc)
-        word = cleanup_word(rword)
-        nrow = new_row(row, [pre, rword, post, word])
-        for c, elem in enumerate(nrow):
-            worksheet.write_string(r, c, elem)        
-        r += 1
+    def convert(self, filein, fileout):
+        workbook = xlsxwriter.Workbook(fileout)
+        worksheet = workbook.add_worksheet()
+        with open(filein, encoding='iso-8859-1') as f:
+            self.process(f, worksheet)
+        workbook.close()
 
 
 def main():
@@ -92,11 +101,8 @@ def main():
         sys.exit('usage: {} MARKER INPUT OUTPUT'.format(sys.argv[0]))
     marker, filein, fileout = param
 
-    workbook = xlsxwriter.Workbook(fileout)
-    worksheet = workbook.add_worksheet()
-    with open(filein, encoding='iso-8859-1') as f:
-        process(marker, f, worksheet)
-    workbook.close()
+    conv = Convert(marker)
+    conv.convert(filein, fileout)
 
 
 main()
