@@ -73,7 +73,6 @@ class Convert:
         for c, elem in enumerate(nheader):
             self.worksheet.write(0, c, elem)
 
-
     def process_rest(self):
         r = 1
         while True:
@@ -90,14 +89,23 @@ class Convert:
                 self.worksheet.write_string(r, c, elem)
             r += 1
 
+    def define_formats(self):
+        self.format_head = self.workbook.add_format({'bold': True})
+        self.format_right = self.workbook.add_format({'align': 'right'})
+
+    def set_formats(self):
+        self.worksheet.set_row(0, None, self.format_head)
+        self.worksheet.set_column(self.conci, self.conci, None, self.format_right)
 
     def convert(self, filein, fileout):
-        workbook = xlsxwriter.Workbook(fileout)
-        self.worksheet = workbook.add_worksheet()
+        self.workbook = xlsxwriter.Workbook(fileout)
+        self.define_formats()
+        self.worksheet = self.workbook.add_worksheet()
         self.f = open(filein, encoding='iso-8859-1')
         self.process_head()
         self.process_rest()
-        workbook.close()
+        self.set_formats()
+        self.workbook.close()
         self.f.close()
 
 
