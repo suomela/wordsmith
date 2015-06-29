@@ -22,6 +22,9 @@ class Convert:
         # We will remove all of them.
         return s.replace(u"\u00A0", "").rstrip("\n").split("\t")
 
+    def read_tsv(self):
+        return self.parse_tsv(self.f.readline())
+
     def find_rword(self, conc):
         m = conc.index(self.marker)
         m2 = conc.rindex(self.marker)
@@ -39,60 +42,63 @@ class Convert:
     def cleanup_word(self, rword):
         return rword.lower()
 
-    def process(self, f, worksheet):
+    def new_row(self, orow, nconc):
+        nrow = []
+        for i, v in enumerate(orow):
+            if i == self.conci:
+                nrow.extend(nconc)
+            else:
+                nrow.append(v)
+        return nrow
+
+    def process_head(self):
         # Row 1
-        l = self.parse_tsv(f.readline())
+        l = self.read_tsv()
         assert len(l) == 1
         assert l[0].startswith("WordSmith Tools ")
 
         # Row 2
-        l = self.parse_tsv(f.readline())
+        l = self.read_tsv()
         assert len(l) == 1
         assert l[0] == ""
 
         # Row 3
-        header = self.parse_tsv(f.readline())
-        conci = header.index(COLUMN)
+        self.header = self.read_tsv()
+        self.conci = self.header.index(COLUMN)
 
-        def new_row(orow, nconc):
-            nrow = []
-            for i, v in enumerate(orow):
-                if i == conci:
-                    nrow.extend(nconc)
-                else:
-                    nrow.append(v)
-            return nrow
-
-        nheader = new_row(
-            header,
+        nheader = self.new_row(
+            self.header,
             ["Before", "Word", "After", "Simple"],
         )
         for c, elem in enumerate(nheader):
-            worksheet.write(0, c, elem)
+            self.worksheet.write(0, c, elem)
 
-        # Row 4...
+
+    def process_rest(self):
         r = 1
         while True:
-            l = f.readline()
+            l = self.f.readline()
             if l == '':
                 break
             row = self.parse_tsv(l)
-            assert len(header) == len(row)
-            conc = row[conci]
+            assert len(self.header) == len(row)
+            conc = row[self.conci]
             pre, rword, post = self.find_rword(conc)
             word = self.cleanup_word(rword)
-            nrow = new_row(row, [pre, rword, post, word])
+            nrow = self.new_row(row, [pre, rword, post, word])
             for c, elem in enumerate(nrow):
-                worksheet.write_string(r, c, elem)
+                self.worksheet.write_string(r, c, elem)
             r += 1
 
 
     def convert(self, filein, fileout):
         workbook = xlsxwriter.Workbook(fileout)
-        worksheet = workbook.add_worksheet()
-        with open(filein, encoding='iso-8859-1') as f:
-            self.process(f, worksheet)
+        self.worksheet = workbook.add_worksheet()
+        self.f = open(filein, encoding='iso-8859-1')
+        self.process_head()
+        self.process_rest()
         workbook.close()
+        self.f.close()
 
 
 def main():
