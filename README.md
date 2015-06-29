@@ -9,6 +9,8 @@ Example
 
 WordSmith output (with *** as search word marker):
 
+    WordSmith Tools 4.0
+    
     N | Concordance              |
     1 | ...foo foo***bar baz...  |
     2 | ...foo Foo***bar, baz... |
