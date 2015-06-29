@@ -25,9 +25,13 @@ Columns in Excel:
 Usage
 -----
 
-    python3 wordsmith-cleanup < input.txt > output.csv
+    python3 wordsmith-cleanup MARKER INPUT OUTPUT
+
+Example:
+
+    python3 wordsmith-cleanup '***' input.txt output.xlsx
 
 Here:
 
 - input.txt = export from WordSmith (as text)
-- output.csv = something you can open in Excel
+- output.xlsx = something you can open in Excel

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import csv
+import xlsxwriter
 import io
 import string
 import sys
@@ -8,7 +8,6 @@ import sys
 
 # Which column to read
 COLUMN = "Concordance"
-MARKER = "***"
 
 # Which characters are considered to be part of a word
 WORDCHAR = set(string.ascii_letters + string.digits + "-'")
@@ -20,14 +19,14 @@ def parse_tsv(s):
     return s.replace(u"\u00A0", "").rstrip("\n").split("\t")
 
 
-def find_rword(conc):
-    marker = conc.index(MARKER)
-    marker2 = conc.rindex(MARKER)
-    assert marker == marker2
-    tail = marker + len(MARKER)
-    text = conc[:marker] + conc[tail:]
-    x = marker
-    y = marker
+def find_rword(marker, conc):
+    m = conc.index(marker)
+    m2 = conc.rindex(marker)
+    assert m == m2
+    tail = m + len(marker)
+    text = conc[:m] + conc[tail:]
+    x = m
+    y = m
     while x > 1 and text[x-1] in WORDCHAR:
         x -= 1
     while y < len(text) - 1 and text[y] in WORDCHAR:
@@ -39,9 +38,7 @@ def cleanup_word(rword):
     return rword.lower()
 
 
-def process(f, fout):
-    fo = csv.writer(fout, dialect="excel")
-
+def process(marker, f, worksheet):
     # Row 1
     l = parse_tsv(f.readline())
     assert len(l) == 1
@@ -69,9 +66,11 @@ def process(f, fout):
         header,
         ["Before", "Word", "After", "Simple"],
     )
-    fo.writerow(nheader)
+    for c, elem in enumerate(nheader):
+        worksheet.write(0, c, elem)
 
     # Row 4...
+    r = 1
     while True:
         l = f.readline()
         if l == '':
@@ -79,18 +78,25 @@ def process(f, fout):
         row = parse_tsv(l)
         assert len(header) == len(row)
         conc = row[conci]
-        pre, rword, post = find_rword(conc)
+        pre, rword, post = find_rword(marker, conc)
         word = cleanup_word(rword)
         nrow = new_row(row, [pre, rword, post, word])
-        fo.writerow(nrow)
+        for c, elem in enumerate(nrow):
+            worksheet.write_string(r, c, elem)        
+        r += 1
 
 
 def main():
-    # Where to read
-    f = io.TextIOWrapper(sys.stdin.buffer, encoding='iso-8859-1')
-    # Where to write
-    fout = sys.stdout
-    process(f, fout)
+    param = sys.argv[1:]
+    if len(param) != 3:
+        sys.exit('usage: {} MARKER INPUT OUTPUT'.format(sys.argv[0]))
+    marker, filein, fileout = param
+
+    workbook = xlsxwriter.Workbook(fileout)
+    worksheet = workbook.add_worksheet()
+    with open(filein, encoding='iso-8859-1') as f:
+        process(marker, f, worksheet)
+    workbook.close()
 
 
 main()
