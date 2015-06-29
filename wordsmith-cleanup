@@ -65,13 +65,23 @@ class Convert:
         # Row 3
         self.header = self.read_tsv()
         self.conci = self.header.index(COLUMN)
-
-        nheader = self.new_row(
+        self.nheader = self.new_row(
             self.header,
             ["Before", "Word", "After", "Simple"],
         )
-        for c, elem in enumerate(nheader):
+        self.widths = []
+        for c, elem in enumerate(self.nheader):
             self.worksheet.write(0, c, elem)
+            self.widths.append(0)
+
+    def column(self, name):
+        return self.nheader.index(name)
+
+    def write_string(self, r, c, elem):
+        self.worksheet.write_string(r, c, elem)
+        w = len(elem)
+        if self.widths[c] < w:
+            self.widths[c] = w
 
     def process_rest(self):
         r = 1
@@ -86,7 +96,7 @@ class Convert:
             word = self.cleanup_word(rword)
             nrow = self.new_row(row, [pre, rword, post, word])
             for c, elem in enumerate(nrow):
-                self.worksheet.write_string(r, c, elem)
+                self.write_string(r, c, elem)
             r += 1
 
     def define_formats(self):
@@ -95,7 +105,15 @@ class Convert:
 
     def set_formats(self):
         self.worksheet.set_row(0, None, self.format_head)
-        self.worksheet.set_column(self.conci, self.conci, None, self.format_right)
+        c = self.column('Before')
+        self.worksheet.set_column(c, c, None, self.format_right)
+        for c, w in enumerate(self.widths):
+            l = w
+            if l > 15:
+                l = int(0.8 * w + 3)
+            l = max(l, 1)
+            self.worksheet.set_column(c, c, l)
+        self.worksheet.freeze_panes(1, 0)
 
     def convert(self, filein, fileout):
         self.workbook = xlsxwriter.Workbook(fileout)
