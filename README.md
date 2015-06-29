@@ -35,3 +35,16 @@ Here:
 
 - input.txt = export from WordSmith (as text)
 - output.xlsx = something you can open in Excel
+
+
+Dependencies
+------------
+
+Python 3 and XlsxWriter.
+
+If you have OS X and Homebrew, use the following commands to install
+everything:
+
+    brew install python3
+    pip3 install xlsxwriter
+
