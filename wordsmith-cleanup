@@ -2,6 +2,7 @@
 
 import xlsxwriter
 import io
+import re
 import string
 import sys
 
@@ -12,6 +13,8 @@ COLUMN = "Concordance"
 # Which characters are considered to be part of a word
 WORDCHAR = set(string.ascii_letters + string.digits + "-'")
 
+CLEANUP1 = re.compile(r"[^a-zA-Z0-9'-]+")
+CLEANUP2 = re.compile(r"[a-zA-Z0-9]")
 
 class Convert:
     def __init__(self, marker):
@@ -42,6 +45,14 @@ class Convert:
     def cleanup_word(self, rword):
         return rword.lower()
 
+    def cleanup_phrase(self, s, reverse=False):
+        s = s.lower()
+        l = CLEANUP1.split(s)
+        l = [x for x in l if CLEANUP2.match(x) is not None]
+        if reverse:
+            l = reversed(l)
+        return ' '.join(l)
+
     def new_row(self, orow, nconc):
         nrow = []
         for i, v in enumerate(orow):
@@ -67,7 +78,7 @@ class Convert:
         self.conci = self.header.index(COLUMN)
         self.nheader = self.new_row(
             self.header,
-            ["Before", "Word", "After", "Simple"],
+            ["Before", "Word", "After", "Simple", "Left context", "Right context"],
         )
         self.widths = []
         for c, elem in enumerate(self.nheader):
@@ -94,7 +105,9 @@ class Convert:
             conc = row[self.conci]
             pre, rword, post = self.find_rword(conc)
             word = self.cleanup_word(rword)
-            nrow = self.new_row(row, [pre, rword, post, word])
+            left = self.cleanup_phrase(pre, True)
+            right = self.cleanup_phrase(post, False)
+            nrow = self.new_row(row, [pre, rword, post, word, left, right])
             for c, elem in enumerate(nrow):
                 self.write_string(r, c, elem)
             r += 1
@@ -102,17 +115,22 @@ class Convert:
     def define_formats(self):
         self.format_head = self.workbook.add_format({'bold': True})
         self.format_right = self.workbook.add_format({'align': 'right'})
+        self.format_light = self.workbook.add_format({'font_color': 'gray'})
 
     def set_formats(self):
         self.worksheet.set_row(0, None, self.format_head)
-        c = self.column('Before')
-        self.worksheet.set_column(c, c, None, self.format_right)
+        for h in ['Before']:
+            c = self.column(h)
+            self.worksheet.set_column(c, c, None, self.format_right)
         for c, w in enumerate(self.widths):
             l = w
             if l > 15:
                 l = int(0.8 * w + 3)
             l = max(l, 1)
             self.worksheet.set_column(c, c, l)
+        for h in ['Left context', 'Right context']:
+            c = self.column(h)
+            self.worksheet.set_column(c, c, 10, self.format_light)
         self.worksheet.freeze_panes(1, 0)
 
     def convert(self, filein, fileout):
