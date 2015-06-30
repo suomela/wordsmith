@@ -101,7 +101,10 @@ class Convert:
             if l == '':
                 break
             row = self.parse_tsv(l)
-            assert len(self.header) == len(row)
+            if len(self.header) != len(row):
+                sys.exit('row {}: expected {} columns, got {} columns: {}'.format(
+                    r, len(self.header), len(row), row
+                ))
             conc = row[self.conci]
             pre, rword, post = self.find_rword(conc)
             word = self.cleanup_word(rword)
